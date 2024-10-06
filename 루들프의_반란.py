@@ -10,13 +10,19 @@ r_c -=1
 grid_map = [[0]*n for _ in range(n)]
 grid_map[r_r][r_c] = -1
 
-santa_dic = {}
+first_santa_dic = {}
 for i in range(p):
     s_n, s_r, s_c = get_int_input()
     s_r -=1
     s_c -=1
     grid_map[s_r][s_c] = s_n
-    santa_dic[s_n] = [s_r, s_c, 1, -1, 0]
+    first_santa_dic[s_n] = [s_r, s_c, 1, -1, 0]
+
+santa_dic = {}
+for i in range(p):
+    for j in first_santa_dic:
+        if j == i+1:
+            santa_dic[j] = first_santa_dic[j]
 
 eight_direction = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]]
 four_direction = [[-1,0], [0,1], [1,0], [0,-1]]
@@ -24,14 +30,19 @@ four_direction = [[-1,0], [0,1], [1,0], [0,-1]]
 def get_distance(r1, c1, r2, c2):
     return int((r1-r2)**2 + (c1-c2)**2)
 
-def bump(score, santa_df, direction, time):
+def bump(score, santa_df, direction, time, from_who):
     santa_dic[santa_df][4]+=score
 
     s_r, s_c = santa_dic[santa_df][0], santa_dic[santa_df][1]
 
     inverse_direction = [direction[0]*(-1), direction[1]*(-1)]
 
-    next_r, next_c = s_r+(inverse_direction[0]*score), s_c+(inverse_direction[1]*score)
+    if from_who=="rdf":
+        real_direction = direction
+    elif from_who=="santa":
+        real_direction = inverse_direction
+
+    next_r, next_c = s_r+(real_direction[0]*score), s_c+(real_direction[1]*score)
 
     if next_r<0 or next_r>=n or next_c<0 or next_c>=n:
         santa_dic[santa_df][2] = 3
@@ -39,7 +50,8 @@ def bump(score, santa_df, direction, time):
         if grid_map[next_r][next_c]==0:
             grid_map[next_r][next_c] = santa_df
             santa_dic[santa_df] = [next_r, next_c, 2, time, santa_dic[santa_df][4]]
-        if grid_map[next_r][next_c]>0:
+            debugging = 0
+        elif grid_map[next_r][next_c]>0:
             santa_dic[santa_df][2], santa_dic[santa_df][3] = 2, time
             # 상호작용
             previous_santa = grid_map[next_r][next_c]
@@ -47,7 +59,7 @@ def bump(score, santa_df, direction, time):
             while True:
                 grid_map[santa_dic[previous_santa][0]][santa_dic[previous_santa][1]] = new_santa
                 santa_dic[new_santa][0], santa_dic[new_santa][1] = santa_dic[previous_santa][0], santa_dic[previous_santa][1]
-                next_r, next_c = santa_dic[previous_santa][0] + inverse_direction[0], santa_dic[previous_santa][1] + inverse_direction[1]
+                next_r, next_c = santa_dic[previous_santa][0] + real_direction[0], santa_dic[previous_santa][1] + real_direction[1]
 
                 if next_r<0 or next_r>=n or next_c<0 or next_c>=n:
                     santa_dic[previous_santa] = [0,0,3,-1, santa_dic[previous_santa][4]]
@@ -120,13 +132,16 @@ for turn in range(m):
             nearest_direction = direction
     # 1-3 루돌프 돌진
     nearest_grid = [r_r+nearest_direction[0], r_c+nearest_direction[1]]
-    grid_map[r_r][r_c] = 0
-    r_r, r_c = nearest_grid[0], nearest_grid[1]
-    grid_map[r_r][r_c] = -1
     if grid_map[nearest_grid[0]][nearest_grid[1]]>0:
+        grid_map[r_r][r_c] = 0
+        r_r, r_c = nearest_grid[0], nearest_grid[1]
+        grid_map[r_r][r_c] = -1
         # 루돌프->산타 충돌
-        bump(c, nearest_santa, nearest_direction, turn)
-
+        bump(c, nearest_santa, nearest_direction, turn, "rdf")
+    else:
+        grid_map[r_r][r_c] = 0
+        r_r, r_c = nearest_grid[0], nearest_grid[1]
+        grid_map[r_r][r_c] = -1
 
     debugging = 0
 
@@ -149,7 +164,7 @@ for turn in range(m):
                             near_direction_list = [direction]
                         elif temp_distance == nearest_distance:
                             near_direction_list.append(direction)
-            if initial_distance == nearest_distance or len(near_direction_list)==0:
+            if initial_distance <= nearest_distance or len(near_direction_list)==0:
                 nearest_direction = [0,0]
             else:
                 nearest_direction = near_direction_list[0]
@@ -160,7 +175,7 @@ for turn in range(m):
             santa_dic[santa][0], santa_dic[santa][1] = nearest_grid[0], nearest_grid[1]
             if grid_map[nearest_grid[0]][nearest_grid[1]]==-1:
                 # 산타->루돌프 충돌 
-                bump(d, santa, nearest_direction, turn)
+                bump(d, santa, nearest_direction, turn, "santa")
             else:
                 grid_map[santa_dic[santa][0]][santa_dic[santa][1]] = santa
 
@@ -178,6 +193,8 @@ for turn in range(m):
     else:
         for i in alive_santa_list:
             santa_dic[i][4]+=1
+
+    debugging = 0
 
 
 debugging = 0
